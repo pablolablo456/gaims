@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Labyrinth - Horror Game</title>
+<style>
+* {
+box-sizing: border-box;
+margin: 0;
+padding: 0;
+user-select: none;
+}
+body, html {
+width: 100%;
+height: 100%;
+overflow: hidden;
+background-color: #000;
+font-family: monospace;
+color: #fff;
+}
+#game-container {
+position: relative;
+width: 100vw;
+height: 100vh;
+}
+canvas {
+display: block;
+width: 100%;
+height: 100%;
+}
+#ui-overlay {
+position: absolute;
+top: 20px;
+left: 20px;
+z-index: 10;
+pointer-events: none;
+}
+.hud-text {
+font-size: 18px;
+color: #00ff66;
+text-shadow: 0 0 5px #00ff66;
+margin-bottom: 5px;
+}
+#radar-container {
+position: absolute;
+bottom: 20px;
+right: 20px;
+width: 180px;
+height: 180px;
+border: 2px solid #00ff66;
+border-radius: 50%;
+background: rgba(0, 20, 0, 0.85);
+box-shadow: 0 0 15px rgba(0, 255, 102, 0.3);
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+z-index: 10;
+}
+#radar-canvas {
+width: 140px;
+height: 140px;
+border-radius: 50%;
+}
+#radar-label {
+position: absolute;
+bottom: 5px;
+font-size: 10px;
+color: #00ff66;
+letter-spacing: 1px;
+}
+#start-screen, #game-over-screen, #win-screen {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background: rgba(0, 0, 0, 0.95);
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+z-index: 20;
+text-align: center;
+}
+h1 {
+font-size: 48px;
+color: #ff0033;
+text-shadow: 0 0 10px #ff0033;
+margin-bottom: 20px;
+letter-spacing: 3px;
+}
+p {
+font-size: 16px;
+max-width: 600px;
+line-height: 1.5;
+color: #ccc;
+margin-bottom: 20px;
+}
+.btn {
+background: transparent;
+border: 2px solid #ff0033;
+color: #ff0033;
+padding: 12px 30px;
+font-size: 20px;
+font-family: monospace;
+cursor: pointer;
+transition: all 0.2s;
+text-shadow: 0 0 5px #ff0033;
+box-shadow: 0 0 10px rgba(255, 0, 51, 0.3);
+}
+.btn:hover {
+background: #ff0033;
+color: #000;
+}
+.hidden {
+display: none !important;
+}
+#instructions {
+margin-top: 15px;
+font-size: 14px;
+color: #
