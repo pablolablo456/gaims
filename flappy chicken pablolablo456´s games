@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Chicken Dodge</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #0b0f19;
+            color: #00ffcc;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ffcc;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.4);
+            border: 2px solid #00ffcc;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        canvas {
+            background: #111827;
+            display: block;
+        }
+        .instructions {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>CYBER CHICKEN DODGE</h1>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="480" height="640"></canvas>
+    </div>
+    <div class="instructions">Press <strong>SPACEBAR</strong> or <strong>UP ARROW</strong> to Jump / Fly</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        let chicken = {
+            x: 80,
+            y: canvas.height / 2,
+            width: 32,
+            height: 32,
+            gravity: 0.4,
+            lift: -7,
+            velocity: 0
+        };
+
+        let obstacles = [];
+        let frameCount = 0;
+        let score = 0;
+        let gameOver = false;
+
+        function resetGame() {
+            chicken.y = canvas.height / 2;
+            chicken.velocity = 0;
+            obstacles = [];
+            score = 0;
+            frameCount = 0;
+            gameOver = false;
+            loop();
+        }
+
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "Space" || e.code === "ArrowUp") {
+                if (gameOver) {
+                    resetGame();
+                } else {
+                    chicken.velocity = chicken.lift;
+                }
+            }
+        });
+
+        canvas.addEventListener("touchstart", () => {
+            if (gameOver) {
+                resetGame();
+            } else {
+                chicken.velocity = chicken.lift;
+            }
+        });
+
+        function spawnObstacle() {
+            const gap = 140;
+            const topHeight = Math.floor(Math.random() * (canvas.height - gap - 100)) + 50;
+            obstacles.push({
+                x: canvas.width,
+                top: topHeight,
+                bottom: canvas.height - topHeight - gap,
+                passed: false
+            });
+        }
+
+        function update() {
+            if (gameOver) return;
+
+            chicken.velocity += chicken.gravity;
+            chicken.y += chicken.velocity;
+
+            if (frameCount % 90 === 0) {
+                spawnObstacle();
+            }
+
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                let obs = obstacles[i];
+                obs.x -= 3;
+
+                // Collision detection
+                if (
+                    chicken.x < obs.x + 40 &&
+                    chicken.x + chicken.width > obs.x &&
+                    (chicken.y < obs.top || chicken.y + chicken.height > canvas.height - obs.bottom)
+                ) {
+                    gameOver = true;
+                }
+
+                if (!obs.passed && obs.x < chicken.x) {
+                    obs.passed = true;
+                    score++;
+                }
+
+                if (obs.x + 40 < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            if (chicken.y + chicken.height > canvas.height || chicken.y < 0) {
+                gameOver = true;
+            }
+
+            frameCount++;
+        }
+
+        function draw() {
+            ctx.fillStyle = "#111827";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Cyber Chicken (AI Pixel Style)
+            ctx.fillStyle = "#ff007f";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#ff007f";
+            ctx.fillRect(chicken.x, chicken.y, chicken.width, chicken.height);
+
+            // Chicken "visor" eye
+            ctx.fillStyle = "#00ffcc";
+            ctx.fillRect(chicken.x + 18, chicken.y + 8, 10, 6);
+
+            ctx.shadowBlur = 0;
+
+            // Draw Obstacles (Neon Pillars)
+            ctx.fillStyle = "#00ffcc";
+            for (let obs of obstacles) {
+                // Top pillar
+                ctx.fillRect(obs.x, 0, 40, obs.top);
+                // Bottom pillar
+                ctx.fillRect(obs.x, canvas.height - obs.bottom, 40, obs.bottom);
+            }
+
+            // Draw Score
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "20px 'Courier New', Courier, monospace";
+            ctx.fillText("SCORE: " + score, 20, 40);
+
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = "#ff007f";
+                ctx.font = "30px 'Courier New', Courier, monospace";
+                ctx.textAlign = "center";
+                ctx.fillText("SYSTEM CRASH (GAME OVER)", canvas.width / 2, canvas.height / 2 - 20);
+
+                ctx.fillStyle = "#00ffcc";
+                ctx.font = "16px 'Courier New', Courier, monospace";
+                ctx.fillText("Press SPACE or Tap to Reboot", canvas.width / 2, canvas.height / 2 + 20);
+                ctx.textAlign = "left";
+            }
+        }
+
+        function loop() {
+            update();
+            draw();
+            if (!gameOver) {
+                requestAnimationFrame(loop);
+            }
+        }
+
+        loop();
+    </script>
+</body>
+</html>
