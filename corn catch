@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chicken Catcher AI Game</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background-color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+        h1 {
+            margin-bottom: 10px;
+            color: #f1c40f;
+        }
+        #score-board {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+        canvas {
+            background-color: #7f8c8d;
+            border: 4px solid #f1c40f;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .instructions {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #bdc3c7;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🐔 Chicken Dash 🐔</h1>
+    <div id="score-board">Score: <span id="score">0</span> | Lives: <span id="lives">3</span></div>
+    <canvas id="gameCanvas" width="480" height="640"></canvas>
+    <div class="instructions">Use the <b>Left</b> and <b>Right</b> arrow keys to move the chicken and catch the corn! Avoid the rocks!</div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const scoreEl = document.getElementById("score");
+        const livesEl = document.getElementById("lives");
+
+        let score = 0;
+        let lives = 3;
+        let isGameOver = false;
+
+        // Player (Chicken)
+        const chicken = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 70,
+            width: 50,
+            height: 50,
+            speed: 7,
+            dx: 0
+        };
+
+        // Falling items
+        const items = [];
+        let spawnTimer = 0;
+
+        // Keyboard controls
+        const keys = {
+            ArrowLeft: false,
+            ArrowRight: false
+        };
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key in keys) keys[e.key] = true;
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (e.key in keys) keys[e.key] = false;
+        });
+
+        function updateChicken() {
+            if (keys.ArrowLeft && chicken.x > 0) {
+                chicken.x -= chicken.speed;
+            }
+            if (keys.ArrowRight && chicken.x < canvas.width - chicken.width) {
+                chicken.x += chicken.speed;
+            }
+        }
+
+        function handleItems() {
+            spawnTimer++;
+            if (spawnTimer > 35) {
+                spawnTimer = 0;
+                const isCorn = Math.random() > 0.3; // 70% chance corn, 30% rock
+                items.push({
+                    x: Math.random() * (canvas.width - 30),
+                    y: -30,
+                    size: 30,
+                    speed: 3 + Math.random() * 4,
+                    type: isCorn ? 'corn' : 'rock'
+                });
+            }
+
+            for (let i = items.length - 1; i >= 0; i--) {
+                const item = items[i];
+                item.y += item.speed;
+
+                // Check collision with chicken
+                if (
+                    item.x < chicken.x + chicken.width &&
+                    item.x + item.size > chicken.x &&
+                    item.y < chicken.y + chicken.height &&
+                    item.y + item.size > chicken.y
+                ) {
+                    if (item.type === 'corn') {
+                        score += 10;
+                        scoreEl.innerText = score;
+                    } else {
+                        lives -= 1;
+                        livesEl.innerText = lives;
+                        if (lives <= 0) {
+                            isGameOver = true;
+                        }
+                    }
+                    items.splice(i, 1);
+                    continue;
+                }
+
+                // Remove off-screen items
+                if (item.y > canvas.height) {
+                    items.splice(i, 1);
+                }
+            }
+        }
+
+        function drawChicken() {
+            ctx.font = "45px Arial";
+            ctx.fillText("🐔", chicken.x, chicken.y + 40);
+        }
+
+        function drawItems() {
+            ctx.font = "30px Arial";
+            items.forEach(item => {
+                const emoji = item.type === 'corn' ? '🌽' : '🪨';
+                ctx.fillText(emoji, item.x, item.y + 25);
+            });
+        }
+
+        function drawGameOver() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = "#f1c40f";
+            ctx.font = "35px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+
+            ctx.fillStyle = "#fff";
+            ctx.font = "20px Arial";
+            ctx.fillText("Final Score: " + score, canvas.width / 2, canvas.height / 2 + 20);
+            ctx.fillText("Refresh page to play again", canvas.width / 2, canvas.height / 2 + 60);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!isGameOver) {
+                updateChicken();
+                handleItems();
+                drawChicken();
+                drawItems();
+                requestAnimationFrame(gameLoop);
+            } else {
+                drawGameOver();
+            }
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>
