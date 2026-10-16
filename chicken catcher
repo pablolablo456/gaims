@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Featherless Chicken Catching Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #222;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            color: #fff;
+        }
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        canvas {
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+            display: block;
+            border-radius: 8px;
+        }
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+            pointer-events: none;
+        }
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 800px;
+            height: 600px;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 8px;
+            display: none;
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #FF4747;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+<div id="gameContainer">
+    <div id="ui">Score: <span id="scoreVal">0</span> | Lives: <span id="livesVal">3</span></div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="gameOverScreen">
+        <h1 style="font-size: 48px; color: #FF6B6B; margin: 0;">Game Over!</h1>
+        <p style="font-size: 20px;">You let too many featherless chickens escape.</p>
+        <p style="font-size: 24px; font-weight: bold;">Final Score: <span id="finalScore">0</span></p>
+        <button onclick="resetGame()">Play Again</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreVal = document.getElementById("scoreVal");
+    const livesVal = document.getElementById("livesVal");
+    const gameOverScreen = document.getElementById("gameOverScreen");
+    const finalScore = document.getElementById("finalScore");
+
+    let score = 0;
+    let lives = 3;
+    let gameOver = false;
+    let chickens = [];
+    let spawnTimer = 0;
+    let spawnInterval = 90; // Frames between spawns
+
+    // Basket Properties
+    const basket = {
+        x: 350,
+        y: 530,
+        width: 100,
+        height: 40,
+        targetX: 350
+    };
+
+    // Track Mouse/Touch
+    window.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        basket.targetX = e.clientX - rect.left - basket.width / 2;
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        if(e.touches.length > 0) {
+            basket.targetX = e.touches[0].clientX - rect.left - basket.width / 2;
+        }
+        e.preventDefault();
+    }, { passive: false });
+
+    class Chicken {
+        constructor() {
+            this.x = Math.random() * (canvas.width - 60) + 30;
+            this.y = -50;
+            this.radius = 20;
+            this.speedY = Math.random() * 1.5 + 1.5;
+            this.speedX = 0;
+            
+            // Simple Behavior AI states
+            this.aiTimer = 0;
+            this.isFlapping = false;
+            this.flapStrength = 0;
+        }
+
+        update() {
+            // "Featherless AI": Randomly decides to panic-flap to change trajectory sideways
+            this.aiTimer++;
+            if (this.aiTimer % 40 === 0) {
+                if (Math.random() > 0.4) {
+                    this.isFlapping = true;
+                    // Steer away dynamically towards left or right
+                    this.flapStrength = (Math.random() - 0.5) * 4; 
+                } else {
+                    this.isFlapping = false;
+                }
+            }
+
+            if (this.isFlapping) {
+                this.speedX += (this.flapStrength - this.speedX) * 0.1;
+            } else {
+                this.speedX *= 0.95; // Slow down drift when drifting stops
+            }
+
+            this.y += this.speedY;
+            this.x += this.speedX;
+
+            // Keep within walls
+            if (this.x < this.radius) this.x = this.radius;
+            if (this.x > canvas.width - this.radius) this.x = canvas.width - this.radius;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            // Draw Pink "Featherless" Body
+            ctx.fillStyle = "#FFC0CB"; // Naked pink skin
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Head extension
+            ctx.beginPath();
+            ctx.arc(10, -10, this.radius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Red Comb (Top of Head)
+            ctx.fillStyle = "#FF3B30";
+            ctx.beginPath();
+            ctx.arc(8, -23, 5, 0, Math.PI * 2);
+            ctx.arc(13, -25, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Yellow Beak
+            ctx.fillStyle = "#FFCC00";
+            ctx.beginPath();
+            ctx.moveTo(20, -12);
+            ctx.lineTo(28, -8);
+            ctx.lineTo(20, -4);
+            ctx.closePath();
+            ctx.fill();
+
+            // Eye
+            ctx.fillStyle = "#000";
+            ctx.beginPath();
+            ctx.arc(14, -13, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tiny Wing (Skin tone, clearly missing feathers)
+            ctx.fillStyle = "#E09AA6"; 
+            ctx.beginPath();
+            // Wing flaps up and down if the AI is actively flapping
+            let wingYOffset = (this.isFlapping && Math.sin(Date.now() * 0.05) > 0) ? -8 : 2;
+            ctx.ellipse(-5, wingYOffset, 8, 5, Math.PI / 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
+    function spawnChicken() {
+        spawnTimer++;
+        if (spawnTimer >= spawnInterval) {
+            chickens.push(new Chicken());
+            spawnTimer = 0;
+            // Gradually speed up spawning as score grows
+            spawnInterval = Math.max(40, 90 - Math.floor(score / 3) * 5);
+        }
+    }
+
+    function updateGame() {
+        if (gameOver) return;
+
+        // Smoothly glide basket towards target position
+        basket.x += (basket.targetX - basket.x) * 0.2;
+
+        // Keep basket in screen boundaries
+        if (basket.x < 0) basket.x = 0;
+        if (basket.x > canvas.width - basket.width) basket.x = canvas.width - basket.width;
+
+        spawnChicken();
+
+        for (let i = chickens.length - 1; i >= 0; i--) {
+            chickens[i].update();
+
+            // Catch Detection Collision
+            let c = chickens[i];
+            if (c.y + c.radius >= basket.y && 
+                c.y - c.radius <= basket.y + basket.height &&
+                c.x >= basket.x && 
+                c.x <= basket.x + basket.width) {
+                
+                // Successfully caught!
+                chickens.splice(i, 1);
+                score++;
+                scoreVal.innerText = score;
+                continue;
+            }
+
+            // Missed chicken dropped past floor
+            if (c.y > canvas.height + 30) {
+                chickens.splice(i, 1);
+                lives--;
+                livesVal.innerText = lives;
+
+                if (lives <= 0) {
+                    endGame();
+                }
+            }
+        }
+    }
+
+    function drawGame() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Grass Bottom Floor
+        ctx.fillStyle = "#4CD964";
+        ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+
+        // Draw Chickens
+        chickens.forEach(chicken => chicken.draw());
+
+        // Draw Catching Basket
+        ctx.fillStyle = "#8B4513"; // Woven Wood Brown
+        ctx.fillRect(basket.x, basket.y, basket.width, basket.height);
+        
+        // Rim Accent for the basket
+        ctx.fillStyle = "#A0522D";
+        ctx.fillRect(basket.x - 4, basket.y, basket.width + 8, 8);
+    }
+
+    function gameLoop() {
+        updateGame();
+        drawGame();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function endGame() {
+        gameOver = true;
+        finalScore.innerText = score;
+        gameOverScreen.style.display = "flex";
+    }
+
+    function resetGame() {
+        score = 0;
+        lives = 3;
+        chickens = [];
+        spawnInterval = 90;
+        scoreVal.innerText = score;
+        livesVal.innerText = lives;
+        gameOver = false;
+        gameOverScreen.style.display = "none";
+    }
+
+    // Initialize Game Loop
+    gameLoop();
+</script>
+
+</body>
+</html>
