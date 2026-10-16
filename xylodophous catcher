@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catch the Xylophilus!</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background: #1a252f;
+      color: #ecf0f1;
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #hud {
+      display: flex;
+      gap: 2rem;
+      background: #2c3e50;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    #game-container {
+      position: relative;
+      width: 800px;
+      height: 500px;
+      background: #27ae60;
+      border: 4px solid #f1c40f;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    }
+    .chicken {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      transition: transform 0.08s ease;
+    }
+    .chicken:hover {
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+    #message-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      z-index: 10;
+    }
+    #message-overlay.hidden {
+      display: none;
+    }
+    h1 {
+      margin-bottom: 0.5rem;
+      color: #f1c40f;
+    }
+    p {
+      margin-bottom: 1rem;
+    }
+    button {
+      background: #e74c3c;
+      color: white;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #c0392b;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="hud">
+    <div>Xylophilus Caught: <span id="score">0</span></div>
+    <div>Time Left: <span id="timer">30</span>s</div>
+  </div>
+
+  <div id="game-container">
+    <div id="message-overlay">
+      <h1 id="overlay-title">Catch the Xylophilus!</h1>
+      <p id="overlay-desc">Click the featherless AI chickens before time runs out.</p>
+      <button id="start-btn" onclick="startGame()">Start Game</button>
+    </div>
+  </div>
+
+  <script>
+    const container = document.getElementById('game-container');
+    const scoreEl = document.getElementById('score');
+    const timerEl = document.getElementById('timer');
+    const overlay = document.getElementById('message-overlay');
+    const overlayTitle = document.getElementById('overlay-title');
+    const overlayDesc = document.getElementById('overlay-desc');
+    const startBtn = document.getElementById('start-btn');
+
+    let score = 0;
+    let timeLeft = 30;
+    let gameInterval = null;
+    let aiInterval = null;
+    let timerInterval = null;
+    let chickens = [];
+
+    // SVG representation of a featherless chicken ("Xylophilus")
+    const chickenSvg = `
+      <svg viewBox="0 0 100 100" width="50" height="50">
+        <!-- Pink/Peach skin body (featherless) -->
+        <ellipse cx="50" cy="55" rx="22" ry="28" fill="#f5cba7" stroke="#d35400" stroke-width="2"/>
+        <!-- Head -->
+        <circle cx="50" cy="28" r="16" fill="#f5cba7" stroke="#d35400" stroke-width="2"/>
+        <!-- Comb (Red crown) -->
+        <path d="M 43 14 C 43 8, 47 6, 50 11 C 53 6, 57 8, 57 14 Z" fill="#e74c3c"/>
+        <!-- Beak -->
+        <polygon points="64,26 74,29 64,32" fill="#f39c12"/>
+        <!-- Wattle -->
+        <ellipse cx="58" cy="36" rx="3" ry="5" fill="#e74c3c"/>
+        <!-- Eye -->
+        <circle cx="56" cy="25" r="2.5" fill="#2c3e50"/>
+        <!-- Legs -->
+        <line x1="42" y1="81" x2="42" y2="94" stroke="#f39c12" stroke-width="3"/>
+        <line x1="58" y1="81" x2="58" y2="94" stroke="#f39c12" stroke-width="3"/>
+      </svg>
+    `;
+
+    class ChickenAI {
+      constructor() {
+        this.x = Math.random() * (container.clientWidth - 60) + 30;
+        this.y = Math.random() * (container.clientHeight - 60) + 30;
+        this.vx = (Math.random() - 0.5) * 4;
+        this.vy = (Math.random() - 0.5) * 4;
+        this.element = document.createElement('div');
+        this.element.className = 'chicken';
+        this.element.innerHTML = chickenSvg;
+        this.element.style.left = `${this.x}px`;
+        this.element.style.top = `${this.y}px`;
+
+        this.element.addEventListener('click', () => this.catch());
+        container.appendChild(this.element);
+      }
+
+      update() {
+        // Simple AI roaming behavior with boundary bounce and random direction tweaks
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 25 || this.x > container.clientWidth - 25) {
+          this.vx *= -1;
+        }
+        if (this.y < 25 || this.y > container.clientHeight - 25) {
+          this.vy *= -1;
+        }
+
+        // Randomly adjust AI velocity occasionally
+        if (Math.random() < 0.05) {
+          this.vx = (Math.random() - 0.5) * 5;
+          this.vy = (Math.random() - 0.5) * 5;
+        }
+
+        this.element.style.left = `${this.x}px`;
+        this.element.style.top = `${this.y}px`;
+
+        // Flip graphic based on horizontal movement
+        if (this.vx > 0) {
+          this.element.style.transform = 'translate(-50%, -50%) scaleX(-1)';
+        } else {
+          this.element.style.transform = 'translate(-50%, -50%) scaleX(1)';
+        }
+      }
+
+      catch() {
+        score++;
+        scoreEl.textContent = score;
+        this.destroy();
+        spawnChicken();
+      }
+
+      destroy() {
+        this.element.remove();
+        chickens = chickens.filter(c => c !== this);
+      }
+    }
+
+    function spawnChicken() {
+      if (chickens.length < 5) {
+        chickens.push(new ChickenAI());
+      }
+    }
+
+    function startGame() {
+      // Reset state
+      score = 0;
+      timeLeft = 30;
+      scoreEl.textContent = score;
+      timerEl.textContent = timeLeft;
+      overlay.classList.add('hidden');
+
+      // Clear existing chickens
+      chickens.forEach(c => c.destroy());
+      chickens = [];
+
+      // Spawn initial flock
+      for (let i = 0; i < 5; i++) {
+        spawnChicken();
+      }
+
+      // Start loops
+      clearInterval(aiInterval);
+      clearInterval(timerInterval);
+
+      aiInterval = setInterval(() => {
+        chickens.forEach(c => c.update());
+      }, 30);
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function endGame() {
+      clearInterval(aiInterval);
+      clearInterval(timerInterval);
+      chickens.forEach(c => c.destroy());
+      chickens = [];
+
+      overlayTitle.textContent = "Time's Up!";
+      overlayDesc.textContent = `You caught ${score} Xylophilus chickens!`;
+      startBtn.textContent = 'Play Again';
+      overlay.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
